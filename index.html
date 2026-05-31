@@ -61,34 +61,38 @@
     #searchInput:focus { border-color: var(--blue); background: white; }
     #searchInput::placeholder { color: var(--muted); }
 
-    /* ── City tabs ── */
-    .tabs-wrap {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
+    /* ── City select ── */
+    .city-row {
       padding: 0 14px 10px;
-      display: flex;
-      gap: 8px;
     }
-    .tabs-wrap::-webkit-scrollbar { display: none; }
-    .tab {
-      flex-shrink: 0;
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 1.5px solid var(--border);
-      background: white;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--muted);
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s;
+    .select-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
     }
-    .tab.active {
+    .select-wrap::after {
+      content: '';
+      position: absolute;
+      right: 12px;
+      width: 0; height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid white;
+      pointer-events: none;
+    }
+    #citySelect {
+      -webkit-appearance: none;
+      appearance: none;
       background: var(--blue);
-      border-color: var(--blue);
       color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 7px 32px 7px 14px;
+      font-size: 13px;
       font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
     }
 
     /* ── Status bar ── */
@@ -220,8 +224,10 @@
       spellcheck="false"
     />
   </div>
-  <div class="tabs-wrap" id="tabsWrap">
-    <!-- populated by JS -->
+  <div class="city-row">
+    <div class="select-wrap">
+      <select id="citySelect"></select>
+    </div>
   </div>
 </div>
 
@@ -260,7 +266,7 @@
   const searchInput = document.getElementById('searchInput');
   const resultsEl   = document.getElementById('results');
   const statusText  = document.getElementById('statusText');
-  const tabsWrap    = document.getElementById('tabsWrap');
+  const citySelect  = document.getElementById('citySelect');
   const refreshBtn  = document.getElementById('refreshBtn');
 
   // ── Cache ────────────────────────────────────────────────────────────────
@@ -387,10 +393,10 @@
     }).join('');
   }
 
-  function renderTabs() {
-    tabsWrap.innerHTML = CITIES.map((c, i) => `
-      <button class="tab${i === cityIdx ? ' active' : ''}" data-i="${i}">${esc(c.name)}</button>
-    `).join('');
+  function renderSelect() {
+    citySelect.innerHTML = CITIES.map((c, i) =>
+      `<option value="${i}"${i === cityIdx ? ' selected' : ''}>${esc(c.name)}</option>`
+    ).join('');
   }
 
   // ── Data loading ─────────────────────────────────────────────────────────
@@ -423,12 +429,9 @@
   }
 
   // ── Event wiring ──────────────────────────────────────────────────────────
-  tabsWrap.addEventListener('click', e => {
-    const btn = e.target.closest('.tab');
-    if (!btn) return;
-    cityIdx = parseInt(btn.dataset.i, 10);
+  citySelect.addEventListener('change', () => {
+    cityIdx = parseInt(citySelect.value, 10);
     try { localStorage.setItem(PREF_CITY, cityIdx); } catch {}
-    renderTabs();
     applyCity();
     renderResults();
   });
@@ -447,7 +450,7 @@
   try { cityIdx = parseInt(localStorage.getItem(PREF_CITY) || '0', 10) || 0; } catch {}
   if (cityIdx >= CITIES.length) cityIdx = 0;
 
-  renderTabs();
+  renderSelect();
   loadDeals();
   setTimeout(() => searchInput.focus(), 400);
 </script>
