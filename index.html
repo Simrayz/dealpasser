@@ -163,6 +163,15 @@
     .deal-arrow { color: var(--muted); font-size: 16px; flex-shrink: 0; }
 
     mark { background: #fff176; border-radius: 2px; }
+    .city-note {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #7a6000;
+      margin-bottom: 4px;
+    }
 
     .empty-state {
       text-align: center;
@@ -232,13 +241,13 @@
   const PREF_CITY  = 'dp_city_pref';
 
   const CITIES = [
-    { name: 'Trondheim',    codes: ['5001'] },
-    { name: 'Kristiansund', codes: ['1505'] },
-    { name: 'Oslo',         codes: ['301', '0301'] },
-    { name: 'Bergen',       codes: ['4601'] },
-    { name: 'Stavanger',    codes: ['1103'] },
-    { name: 'Tromsø',       codes: ['5501'] },
-    { name: 'Hele Norge',   codes: null },
+    { name: 'Trondheim',       codes: null,   county: 'trøndelag',        munis: ['5001'] },
+    { name: 'Kristiansund',    codes: null,   county: 'møre og romsdal',  munis: null, note: 'Ingen avtaler i Kristiansund ennå – viser hele Møre og Romsdal' },
+    { name: 'Oslo',            codes: null,   county: null,               munis: ['301','0301'] },
+    { name: 'Bergen',          codes: null,   county: null,               munis: ['4601'] },
+    { name: 'Stavanger',       codes: null,   county: null,               munis: ['1103'] },
+    { name: 'Tromsø',          codes: null,   county: null,               munis: ['5501'] },
+    { name: 'Hele Norge',      codes: null,   county: null,               munis: null },
   ];
 
   // ── State ────────────────────────────────────────────────────────────────
@@ -267,16 +276,25 @@
 
   // ── City filter ──────────────────────────────────────────────────────────
   function applyCity() {
-    const codes = CITIES[cityIdx].codes;
-    if (!codes) {
+    const city = CITIES[cityIdx];
+    if (!city.munis && !city.county) {
       viewDeals = rawDeals;
-    } else {
-      const set = new Set(codes);
-      viewDeals = rawDeals.filter(d => {
-        const code = String(d.geoposition?.municipalityCode ?? '');
-        return set.has(code);
-      });
+      return;
     }
+    const muniSet = city.munis ? new Set(city.munis) : null;
+    const countyNorm = city.county ? city.county.toLowerCase() : null;
+    viewDeals = rawDeals.filter(d => {
+      const geo = d.geoposition || {};
+      if (muniSet) {
+        const code = String(geo.municipalityCode ?? '');
+        if (muniSet.has(code)) return true;
+      }
+      if (countyNorm) {
+        const c = (geo.county || '').toLowerCase();
+        if (c === countyNorm) return true;
+      }
+      return false;
+    });
   }
 
   // ── Search & scoring ─────────────────────────────────────────────────────
@@ -319,21 +337,26 @@
 
   function renderResults() {
     const filtered = filterDeals();
-    const cityName = CITIES[cityIdx].name;
+    const city = CITIES[cityIdx];
+    const cityName = city.name;
     const total = viewDeals.length;
     statusText.textContent = query
       ? `${filtered.length} av ${total} steder (${cityName})`
       : `${total} steder (${cityName})`;
 
+    let noteHtml = city.note
+      ? `<div class="city-note">${esc(city.note)}</div>`
+      : '';
+
     if (filtered.length === 0) {
       if (query) {
-        resultsEl.innerHTML = `
+        resultsEl.innerHTML = noteHtml + `
           <div class="empty-state">
             <div class="icon">❌</div>
             <p><strong>${esc(query)}</strong> er ikke med i Dealpass i ${esc(cityName)}.</p>
           </div>`;
       } else {
-        resultsEl.innerHTML = `
+        resultsEl.innerHTML = noteHtml + `
           <div class="empty-state">
             <div class="icon">🤷</div>
             <p>Ingen avtaler funnet i ${esc(cityName)}.</p>
@@ -342,7 +365,7 @@
       return;
     }
 
-    const isAll = !CITIES[cityIdx].codes;
+    const isAll = !CITIES[cityIdx].munis || city.county;
     resultsEl.innerHTML = filtered.map(deal => {
       const pct = deal.discount?.premium || 0;
       const cats = (deal.categories || []).map(c => c.name).join(', ');
