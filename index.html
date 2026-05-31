@@ -46,10 +46,10 @@
       background: white;
       box-shadow: 0 1px 6px rgba(0,0,0,0.1);
     }
-    .search-wrap { padding: 10px 14px 8px; }
+    .search-wrap { padding: 10px 14px 8px; position: relative; }
     #searchInput {
       width: 100%;
-      padding: 10px 14px;
+      padding: 10px 38px 10px 14px;
       font-size: 16px;
       border: 1.5px solid var(--border);
       border-radius: 10px;
@@ -60,6 +60,25 @@
     }
     #searchInput:focus { border-color: var(--blue); background: white; }
     #searchInput::placeholder { color: var(--muted); }
+    #clearBtn {
+      display: none;
+      position: absolute;
+      right: 22px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: none;
+      background: var(--muted);
+      color: white;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    #clearBtn.visible { display: flex; }
 
     /* ── City select ── */
     .city-row {
@@ -223,6 +242,7 @@
       autocapitalize="off"
       spellcheck="false"
     />
+    <button id="clearBtn" aria-label="Tøm søk">✕</button>
   </div>
   <div class="city-row">
     <div class="select-wrap">
@@ -264,6 +284,7 @@
 
   // ── DOM ──────────────────────────────────────────────────────────────────
   const searchInput = document.getElementById('searchInput');
+  const clearBtn    = document.getElementById('clearBtn');
   const resultsEl   = document.getElementById('results');
   const statusText  = document.getElementById('statusText');
   const citySelect  = document.getElementById('citySelect');
@@ -438,7 +459,16 @@
 
   searchInput.addEventListener('input', () => {
     query = searchInput.value;
+    clearBtn.classList.toggle('visible', query.length > 0);
     renderResults();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    query = '';
+    clearBtn.classList.remove('visible');
+    renderResults();
+    searchInput.focus();
   });
 
   refreshBtn.addEventListener('click', () => {
