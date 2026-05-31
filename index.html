@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Dealpass" />
+  <title>Dealpass Sjekk</title>
+  <style>
+    :root {
+      --green: #1a9e5c;
+      --red: #d32f2f;
+      --blue: #1565c0;
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --text: #212121;
+      --muted: #757575;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      background: var(--blue);
+      color: white;
+      padding: 16px 20px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    header p {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+    .search-wrap {
+      padding: 14px 16px 10px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 66px;
+      z-index: 9;
+    }
+    #searchInput {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 17px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+      background: var(--bg);
+      -webkit-appearance: none;
+    }
+    #searchInput:focus { border-color: var(--blue); background: white; }
+    #searchInput::placeholder { color: var(--muted); }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-label input[type=checkbox] {
+      width: 36px; height: 20px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 20px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-label input[type=checkbox]:checked { background: var(--blue); }
+    .toggle-label input[type=checkbox]::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: white;
+      top: 2px; left: 2px;
+      transition: left 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .toggle-label input[type=checkbox]:checked::after { left: 18px; }
+    #statusLine {
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    #results {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .deal-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      border: 1px solid var(--border);
+    }
+    .deal-badge {
+      flex-shrink: 0;
+      width: 56px; height: 56px;
+      border-radius: 12px;
+      background: #e8f5e9;
+      color: var(--green);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .deal-badge span.pct-label {
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.8;
+    }
+    .deal-info { flex: 1; min-width: 0; }
+    .deal-name {
+      font-weight: 600;
+      font-size: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .deal-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .deal-arrow {
+      color: var(--muted);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .no-result {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+    .no-result .icon { font-size: 48px; }
+    .no-result p { margin-top: 10px; font-size: 15px; }
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg {
+      background: #fdecea;
+      border: 1px solid #f5c6c6;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: var(--red);
+      margin: 16px;
+    }
+    .match-highlight { background: #fff176; border-radius: 2px; }
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .refresh-btn:active { background: var(--bg); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Dealpass Sjekk</h1>
+  <p>TF Bank – sjekk om restauranten har avtale</p>
+</header>
+
+<div class="search-wrap">
+  <input
+    type="search"
+    id="searchInput"
+    placeholder="Søk på restaurant..."
+    autocomplete="off"
+    autocorrect="off"
+    autocapitalize="off"
+    spellcheck="false"
+  />
+  <div class="controls">
+    <label class="toggle-label">
+      <input type="checkbox" id="allNorway" />
+      Hele Norge
+    </label>
+    <button class="refresh-btn" id="refreshBtn">Oppdater</button>
+    <span id="statusLine">Laster...</span>
+  </div>
+</div>
+
+<div id="results">
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Henter avtaler...</p>
+  </div>
+</div>
+
+<script>
+  const TRONDHEIM_LOCATIONS = '50,5001';
+  const FOOD_CAT = '343';
+  const BASE_URL = 'https://tfbank.dealpass.no/ajax/deals';
+  const CACHE_KEY_TRD = 'dp_deals_trd';
+  const CACHE_KEY_ALL = 'dp_deals_all';
+  const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours
+
+  let allDeals = [];
+  let searchQuery = '';
+  let isAllNorway = false;
+
+  const searchInput = document.getElementById('searchInput');
+  const resultsEl = document.getElementById('results');
+  const statusLine = document.getElementById('statusLine');
+  const allNorwayToggle = document.getElementById('allNorway');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  function cacheKey() {
+    return isAllNorway ? CACHE_KEY_ALL : CACHE_KEY_TRD;
+  }
+
+  function getCache() {
+    try {
+      const raw = localStorage.getItem(cacheKey());
+      if (!raw) return null;
+      const { ts, data } = JSON.parse(raw);
+      if (Date.now() - ts > CACHE_TTL) return null;
+      return data;
+    } catch { return null; }
+  }
+
+  function setCache(data) {
+    try {
+      localStorage.setItem(cacheKey(), JSON.stringify({ ts: Date.now(), data }));
+    } catch {}
+  }
+
+  async function fetchDeals(forceRefresh = false) {
+    resultsEl.innerHTML = '<div class="loading"><div class="spinner"></div><p>Henter avtaler...</p></div>';
+    statusLine.textContent = 'Laster...';
+
+    if (!forceRefresh) {
+      const cached = getCache();
+      if (cached) {
+        allDeals = cached;
+        renderResults();
+        return;
+      }
+    }
+
+    try {
+      const params = new URLSearchParams({
+        categories: FOOD_CAT,
+        offset: 0,
+        limit: 500,
+      });
+      if (!isAllNorway) {
+        params.set('locations', TRONDHEIM_LOCATIONS);
+      }
+
+      const resp = await fetch(`${BASE_URL}?${params}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+
+      allDeals = json.deals || [];
+      setCache(allDeals);
+      renderResults();
+    } catch (err) {
+      resultsEl.innerHTML = `<div class="error-msg">Kunne ikke hente avtaler. Sjekk nettverksforbindelsen og prøv igjen.<br><br><small>${err.message}</small></div>`;
+      statusLine.textContent = 'Feil';
+    }
+  }
+
+  function normalize(str) {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .trim();
+  }
+
+  function highlight(text, query) {
+    if (!query) return escHtml(text);
+    const normText = normalize(text);
+    const normQuery = normalize(query);
+    const idx = normText.indexOf(normQuery);
+    if (idx === -1) return escHtml(text);
+    return (
+      escHtml(text.slice(0, idx)) +
+      '<mark class="match-highlight">' +
+      escHtml(text.slice(idx, idx + query.length)) +
+      '</mark>' +
+      escHtml(text.slice(idx + query.length))
+    );
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function score(deal, normQ) {
+    const normName = normalize(deal.name);
+    if (normName.startsWith(normQ)) return 3;
+    if (normName.includes(normQ)) return 2;
+    // word-level partial match
+    if (normName.split(/\s+/).some(w => w.startsWith(normQ))) return 1;
+    return 0;
+  }
+
+  function filterDeals(query) {
+    if (!query) return [...allDeals];
+    const normQ = normalize(query);
+    return allDeals
+      .map(d => ({ deal: d, s: score(d, normQ) }))
+      .filter(({ s }) => s > 0)
+      .sort((a, b) => b.s - a.s)
+      .map(({ deal }) => deal);
+  }
+
+  function renderResults() {
+    const query = searchQuery.trim();
+    const filtered = filterDeals(query);
+
+    const scope = isAllNorway ? 'hele Norge' : 'Trondheim';
+    statusLine.textContent = `${allDeals.length} steder (${scope})`;
+
+    if (!query) {
+      if (allDeals.length === 0) {
+        resultsEl.innerHTML = '<div class="no-result"><div class="icon">🤷</div><p>Ingen avtaler funnet.</p></div>';
+        return;
+      }
+      resultsEl.innerHTML = '<div class="no-result"><div class="icon">🔍</div><p>Skriv inn restaurantnavn for å søke</p></div>';
+      return;
+    }
+
+    if (filtered.length === 0) {
+      resultsEl.innerHTML = `
+        <div class="no-result">
+          <div class="icon">❌</div>
+          <p><strong>${escHtml(query)}</strong> er ikke med i Dealpass ${isAllNorway ? 'i hele Norge' : 'i Trondheim'}.</p>
+        </div>`;
+      return;
+    }
+
+    const cards = filtered.map(deal => {
+      const premium = deal.discount?.premium || 0;
+      const cats = (deal.categories || []).map(c => c.name).join(', ');
+      const supplier = deal.supplier;
+      const address = supplier?.address ? `${supplier.address}` : '';
+      const postal = supplier?.postal || '';
+      const meta = [cats, address, postal].filter(Boolean).join(' · ');
+      const dealUrl = `https://tfbank.dealpass.no/deal/${deal.id}`;
+
+      return `
+        <a class="deal-card" href="${dealUrl}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">
+          <div class="deal-badge">
+            ${premium}%
+            <span class="pct-label">rabatt</span>
+          </div>
+          <div class="deal-info">
+            <div class="deal-name">${highlight(deal.name, query)}</div>
+            <div class="deal-meta">${escHtml(meta)}</div>
+          </div>
+          <div class="deal-arrow">›</div>
+        </a>`;
+    }).join('');
+
+    resultsEl.innerHTML = cards;
+  }
+
+  searchInput.addEventListener('input', () => {
+    searchQuery = searchInput.value;
+    renderResults();
+  });
+
+  allNorwayToggle.addEventListener('change', () => {
+    isAllNorway = allNorwayToggle.checked;
+    allDeals = [];
+    fetchDeals();
+  });
+
+  refreshBtn.addEventListener('click', () => {
+    localStorage.removeItem(cacheKey());
+    fetchDeals(true);
+  });
+
+  // Auto-focus search on load
+  window.addEventListener('load', () => {
+    fetchDeals();
+    // Slight delay so keyboard doesn't pop immediately on mobile
+    setTimeout(() => searchInput.focus(), 300);
+  });
+</script>
+</body>
+</html>
