@@ -483,6 +483,10 @@
   renderSelect();
   loadDeals();
   setTimeout(() => searchInput.focus(), 400);
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
 </script>
 </body>
 </html>
