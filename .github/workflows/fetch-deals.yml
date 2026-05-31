@@ -1,0 +1,57 @@
+name: Fetch Dealpass deals
+
+on:
+  schedule:
+    - cron: '0 5 * * *'   # 05:00 UTC daily (07:00 Norwegian time)
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch all Norwegian food deals (paginated)
+        run: |
+          python3 << 'EOF'
+          import urllib.request, json
+
+          all_deals = []
+          offset = 0
+          limit = 50
+          total = None
+
+          while True:
+              url = f"https://tfbank.dealpass.no/ajax/deals?categories=343&offset={offset}&limit={limit}"
+              with urllib.request.urlopen(url, timeout=30) as r:
+                  data = json.loads(r.read())
+
+              deals = data["deals"]
+              if total is None:
+                  total = data["summary"]["total_deals_matched"]
+
+              all_deals.extend(deals)
+              print(f"Fetched {len(deals)}, total so far: {len(all_deals)}/{total}")
+
+              offset += limit
+              if offset >= total or not deals:
+                  break
+
+          output = {"deals": all_deals, "summary": {"total_deals_matched": total}}
+          with open("deals.json", "w") as f:
+              json.dump(output, f, ensure_ascii=False)
+
+          print(f"Saved {len(all_deals)} deals")
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deals.json
+          git diff --cached --quiet || git commit -m "chore: update deals data [skip ci]"
+          git push
